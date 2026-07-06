@@ -1,0 +1,17 @@
+venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.claude/
+
+# raw data is downloaded from Kaggle, not committed (large + license terms)
+data/raw/*
+!data/raw/.gitkeep
+# data/processed IS committed intentionally: teammates doing Task 2 (SQL/Mongo)
+# and Task 4 (forecast script) need the cleaned dataset without re-running Python
+
+*.zip
+reference/
+
+.env
+kaggle.json
