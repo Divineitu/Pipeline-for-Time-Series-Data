@@ -1,0 +1,4 @@
+experiment,best_params,cv_score(neg_MAE),test_RMSE,test_MAE,test_WMAE,fit_time_sec
+1. Linear Regression (baseline),n/a (no hyperparameters),,3308.26,1684.31,1785.7,0.6
+2. Random Forest (tuned),"{'n_estimators': 100, 'min_samples_leaf': 4, 'max_features': 0.6, 'max_depth': 16}",-1728.67,2862.42,1325.31,1499.17,351.7
+3. XGBoost (tuned),"{'subsample': 0.7, 'n_estimators': 350, 'max_depth': 8, 'learning_rate': 0.03, 'colsample_bytree': 0.7}",-1663.07,2742.43,1262.01,1443.95,110.8
