@@ -9,14 +9,7 @@ endpoints, and an end-to-end forecast script.
 joined with store metadata (type, size) and store-week external features
 (temperature, fuel price, CPI, unemployment, promotional markdowns).
 
-## Team & task breakdown
 
-| Task | Owner | Description |
-|------|-------|-------------|
-| Task 1 — Preprocessing, EDA, Modeling | *(this contributor)* | Data cleaning, 6 analytical questions, model training + tuning |
-| Task 2 — Database design (SQL + MongoDB) | TBD | ERD, schema scripts, sample documents, queries |
-| Task 3 — CRUD + time-series API endpoints | TBD | REST endpoints for both databases |
-| Task 4 — Prediction/forecast script | TBD | Fetch -> preprocess -> load model -> predict |
 
 ## Repository structure
 
@@ -66,8 +59,6 @@ jupyter nbconvert --to notebook --execute --inplace 02_analytical_questions.ipyn
 jupyter nbconvert --to notebook --execute --inplace 03_modeling.ipynb
 ```
 
-Run them in order — `02` and `03` both depend on `data/processed/walmart_merged_clean.csv`,
-which `01` produces.
 
 ### A. Dataset understanding (`01_eda.ipynb`)
 
@@ -130,13 +121,3 @@ Full table with CV scores and fit times: `reports/experiment_table.csv`.
 **Best model:** XGBoost (tuned), saved to `models/best_model.pkl` with its
 feature list and metrics in `models/model_metadata.json` for reuse in Task 4.
 
-## Notes for teammates (Tasks 2-4)
-
-- Use `data/processed/walmart_merged_clean.csv` as the source dataset — it's
-  already merged (train + features + stores) and has missing values handled.
-- `src/preprocessing.py` contains the exact feature-engineering pipeline used
-  for the model (lags, rolling means, date parts, categorical encoding) —
-  reuse `build_feature_frame()` in Task 4 so the forecast script preprocesses
-  incoming records identically to how the model was trained.
-- `models/model_metadata.json` lists the exact feature column order the
-  model expects.
