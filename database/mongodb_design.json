@@ -1,0 +1,50 @@
+[
+  {
+    "store_dept_id": "1_1_2012-10-26",
+    "store_id": 1,
+    "dept_id": 1,
+    "date_friday": "2012-10-26",
+    "store_metadata": {
+      "type": "A",
+      "size": 151315
+    },
+    "environmental_features": {
+      "temperature": 69.16,
+      "fuel_price": 3.506,
+      "cpi": 223.444,
+      "unemployment": 6.573,
+      "is_holiday": false,
+      "markdowns": [4012.43, 0.00, 16.70, 1120.30, 4101.12]
+    },
+    "sales_data": {
+      "actual_weekly_sales": 27369.31,
+      "lag_1_sales": 24185.20,
+      "rolling_4wk_mean": 25112.40,
+      "predicted_sales": 26950.15
+    }
+  },
+  {
+    "store_dept_id": "1_2_2012-10-26",
+    "store_id": 1,
+    "dept_id": 2,
+    "date_friday": "2012-10-26",
+    "store_metadata": {
+      "type": "A",
+      "size": 151315
+    },
+    "environmental_features": {
+      "temperature": 69.16,
+      "fuel_price": 3.506,
+      "cpi": 223.444,
+      "unemployment": 6.573,
+      "is_holiday": false,
+      "markdowns": [4012.43, 0.00, 16.70, 1120.30, 4101.12]
+    },
+    "sales_data": {
+      "actual_weekly_sales": 48372.10,
+      "lag_1_sales": 46210.00,
+      "rolling_4wk_mean": 47100.50,
+      "predicted_sales": 48120.00
+    }
+  }
+]
