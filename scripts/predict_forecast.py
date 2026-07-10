@@ -36,7 +36,7 @@ def fetch_json(path: str, params: dict | None = None) -> dict | list:
     url = f"{API_BASE_URL.rstrip('/')}{path}"
     if params:
         url = f"{url}?{urlencode(params)}"
-    with urlopen(url, timeout=10) as response:
+    with urlopen(url, timeout=25) as response:
         return json.loads(response.read().decode("utf-8"))
 
 
