@@ -36,6 +36,9 @@ def fetch_json(path: str, params: dict | None = None) -> dict | list:
     url = f"{API_BASE_URL.rstrip('/')}{path}"
     if params:
         url = f"{url}?{urlencode(params)}"
+    # 25s because the very first request after the API starts up can be slow
+    # while it opens the connection to Mongo Atlas - a shorter timeout kept
+    # tripping on that first call even though the request was fine
     with urlopen(url, timeout=25) as response:
         return json.loads(response.read().decode("utf-8"))
 
@@ -95,6 +98,7 @@ def load_history_from_csv(store: int, dept: int, lookback_weeks: int) -> pd.Data
 def get_history(store: int, dept: int, lookback_weeks: int) -> tuple[pd.DataFrame, str]:
     try:
         history = fetch_history_from_api(store, dept, lookback_weeks)
+        # need at least 9 weeks so lag_8 and the 8-week rolling stats aren't all NaN
         if len(history) < 9:
             raise ValueError("API returned too few weeks to build lag/rolling features.")
         return history, "api"
