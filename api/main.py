@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional, Dict
 
 from bson import ObjectId
 from bson.errors import InvalidId
@@ -16,25 +16,25 @@ class SalesRecordIn(BaseModel):
     dept_id: int
     date_friday: str
     weekly_sales: float
-    lag_1_sales: float | None = None
-    rolling_4wk_mean: float | None = None
-    predicted_sales: float | None = None
+    lag_1_sales: Optional[float] = None
+    rolling_4wk_mean: Optional[float] = None
+    predicted_sales: Optional[float] = None
 
 
 class SalesRecordUpdate(BaseModel):
-    weekly_sales: float | None = None
-    lag_1_sales: float | None = None
-    rolling_4wk_mean: float | None = None
-    predicted_sales: float | None = None
+    weekly_sales: Optional[float] = None
+    lag_1_sales: Optional[float] = None
+    rolling_4wk_mean: Optional[float] = None
+    predicted_sales: Optional[float] = None
 
 
 class MongoRecordIn(BaseModel):
     store_id: int
     dept_id: int
     date_friday: str
-    store_metadata: dict[str, Any]
-    environmental_features: dict[str, Any]
-    sales_data: dict[str, Any]
+    store_metadata: Dict[str, Any]
+    environmental_features: Dict[str, Any]
+    sales_data: Dict[str, Any]
 
 app = FastAPI(
     title="Walmart Sales API",
@@ -284,7 +284,7 @@ def parse_object_id(record_id: str) -> ObjectId:
 
 
 @app.put("/mongo/records/{record_id}")
-def mongo_update(record_id: str, updates: dict[str, Any]):
+def mongo_update(record_id: str, updates: Dict[str, Any]):
 
     if not updates:
         raise HTTPException(status_code=400, detail="No fields to update.")
