@@ -1,0 +1,10 @@
+{
+  "source": "api",
+  "store": 20,
+  "dept": 5,
+  "date": "2012-10-26",
+  "prediction": 37497.84,
+  "actual": 43753.95,
+  "model": "3. XGBoost (tuned)",
+  "test_wmae": 1443.95
+}

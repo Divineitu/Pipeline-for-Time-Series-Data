@@ -121,3 +121,48 @@ Full table with CV scores and fit times: `reports/experiment_table.csv`.
 **Best model:** XGBoost (tuned), saved to `models/best_model.pkl` with its
 feature list and metrics in `models/model_metadata.json` for reuse in Task 4.
 
+## Task 4 — Prediction / Forecast Script
+
+`scripts/predict_forecast.py` consolidates the earlier tasks into one
+end-to-end forecast:
+
+1. Fetches recent weekly history for a store/department from the team API
+   (`GET /mongo/latest` + `GET /mongo/date-range`).
+2. Rebuilds lag (`lag_1/2/4/8`) and rolling-mean/std (4wk/8wk) features with
+   the same `src/preprocessing.py` pipeline used in Task 1, so training and
+   inference stay consistent.
+3. Loads the tuned XGBoost model from `models/best_model.pkl`.
+4. Predicts next week's sales for that store/department.
+
+If the API can't be reached, it falls back to the local
+`data/processed/walmart_merged_clean.csv` so the script still runs during
+development — the `source` field in the output reports which path was used.
+
+### Running it
+
+```bash
+# start the API (separate terminal)
+python -m uvicorn api.main:app --reload
+
+# run a forecast
+python scripts/predict_forecast.py --store 1 --dept 1
+```
+
+Example output, fetched live from the API:
+
+```json
+{
+  "source": "api",
+  "store": 1,
+  "dept": 1,
+  "date": "2012-10-26",
+  "prediction": 28074.88,
+  "actual": 27390.81,
+  "model": "3. XGBoost (tuned)",
+  "test_wmae": 1443.95
+}
+```
+
+Pass `--output <path>` to also save the result as JSON (used to capture the
+evidence in `reports/task4_predictions/`).
+
