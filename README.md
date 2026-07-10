@@ -4,12 +4,21 @@ Group project working with time-series data across preprocessing/EDA, relational
 (MySQL) + non-relational (MongoDB) database design, CRUD/time-series API
 endpoints, and an end-to-end forecast script.
 
+**GitHub Repository:** https://github.com/Divineitu/Pipeline-for-Time-Series-Data
+
 **Dataset:** [Walmart Recruiting - Store Sales Forecasting](https://www.kaggle.com/c/walmart-recruiting-store-sales-forecasting)
 (Kaggle). Weekly sales for 45 stores x 81 departments (Feb 2010 - Oct 2012),
 joined with store metadata (type, size) and store-week external features
 (temperature, fuel price, CPI, unemployment, promotional markdowns).
 
+## Team Members and Contribution
 
+| Member | Task |
+|---|---|
+| Divine Itu | Task 1 — Time-series Preprocessing and Exploratory Analysis |
+| Yvette Uwimpaye | Task 2 — Database Design and Implementation |
+| Milka Keza Isingizwe | Task 3 — Endpoints for CRUD and Time-Series Queries |
+| Anthony Ariik | Task 4 — Create a Prediction/Forecast Script |
 
 ## Repository structure
 
@@ -27,9 +36,23 @@ src/
 models/
   best_model.pkl         Best trained model (persisted with joblib)
   model_metadata.json     Feature list, target column, split date, test metrics
+database/
+  schema.sql            MySQL schema: stores, weekly_features, department_sales
+  mongodb_design.json    Sample nested MongoDB documents (store + env features + sales)
+  queries_test.sql       Required verification queries (latest, date-range, aggregation) — SQL
+  queries_test.js        Same verification queries — MongoDB
+api/
+  main.py                FastAPI app: CRUD + time-series endpoints for SQL and MongoDB
+  database_sql.py        SQLAlchemy session/engine setup
+  database_mongo.py      PyMongo client/collection setup
+  config.py               Loads DB credentials from environment variables
+scripts/
+  predict_forecast.py    Task 4: fetch -> preprocess -> load model -> predict
 reports/
   experiment_table.csv    Model comparison table (Task 1C)
   figures/                All analysis charts (PNG)
+  task4_predictions/      Saved example forecast runs (Task 4)
+.env.example             Template for MySQL/MongoDB credentials (copy to .env, fill in your own)
 ```
 
 ## Task 1 — Preprocessing & Exploratory Analysis
@@ -120,6 +143,59 @@ Full table with CV scores and fit times: `reports/experiment_table.csv`.
 
 **Best model:** XGBoost (tuned), saved to `models/best_model.pkl` with its
 feature list and metrics in `models/model_metadata.json` for reuse in Task 4.
+
+## Task 2 — Database Design (SQL + MongoDB)
+
+Two parallel database designs over the same cleaned dataset, one relational
+and one document-based, so Task 3's endpoints can compare both.
+
+**Relational (MySQL)** — `database/schema.sql` — normalized into 3 tables:
+
+- `stores` — store metadata (type, size), one row per store.
+- `weekly_features` — store-week external variables (temperature, fuel
+  price, CPI, unemployment, holiday flag, markdowns), foreign-keyed to
+  `stores`.
+- `department_sales` — the time-series fact table: weekly sales per
+  store/department, plus `lag_1_sales`, `rolling_4wk_mean` and
+  `predicted_sales`, foreign-keyed to both `stores` and `weekly_features`.
+
+**Non-relational (MongoDB)** — `database/mongodb_design.json` — one denormalized
+document per store/dept/week, nesting `store_metadata`, `environmental_features`
+and `sales_data` together (sample documents included) so a single read returns
+everything needed for a forecast without a join.
+
+**Verification queries** — `database/queries_test.sql` (SQL) and
+`database/queries_test.js` (MongoDB) both implement the same three checks:
+latest record, date-range lookup, and a holiday high-sales aggregation
+(`is_holiday = 1 AND weekly_sales > 100000`).
+
+## Task 3 — CRUD + Time-Series API Endpoints
+
+`api/main.py` is a FastAPI app exposing matching CRUD + time-series routes
+over both databases from Task 2:
+
+| SQL | MongoDB | Purpose |
+|---|---|---|
+| `GET /sql/latest` | `GET /mongo/latest` | Most recent weekly record |
+| `GET /sql/date-range` | `GET /mongo/date-range` | Records between `start_date`/`end_date` |
+| `GET /sql/high-holiday-sales` | `GET /mongo/high-holiday-sales` | Holiday weeks with sales > 100,000 |
+| `POST /sql/records` | `POST /mongo/records` | Create a record |
+| `PUT /sql/records/{id}` | `PUT /mongo/records/{id}` | Update a record |
+| `DELETE /sql/records/{id}` | `DELETE /mongo/records/{id}` | Delete a record |
+
+`api/database_sql.py` and `api/database_mongo.py` set up the SQLAlchemy
+session and PyMongo client respectively; `api/config.py` reads the connection
+strings from environment variables (see `.env.example` — copy it to `.env`
+and fill in your own MySQL/MongoDB credentials, never commit real ones).
+
+### Running the API
+
+```bash
+cp .env.example .env       # fill in your own DB credentials
+python -m uvicorn api.main:app --reload
+```
+
+Interactive docs are then available at `http://127.0.0.1:8000/docs`.
 
 ## Task 4 — Prediction / Forecast Script
 
