@@ -1,9 +1,40 @@
+from typing import Any
+
+from bson import ObjectId
+from bson.errors import InvalidId
 from fastapi import FastAPI, Depends, HTTPException, Query
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
 from .database_sql import get_db
 from .database_mongo import get_mongo
+
+
+class SalesRecordIn(BaseModel):
+    store_id: int
+    dept_id: int
+    date_friday: str
+    weekly_sales: float
+    lag_1_sales: float | None = None
+    rolling_4wk_mean: float | None = None
+    predicted_sales: float | None = None
+
+
+class SalesRecordUpdate(BaseModel):
+    weekly_sales: float | None = None
+    lag_1_sales: float | None = None
+    rolling_4wk_mean: float | None = None
+    predicted_sales: float | None = None
+
+
+class MongoRecordIn(BaseModel):
+    store_id: int
+    dept_id: int
+    date_friday: str
+    store_metadata: dict[str, Any]
+    environmental_features: dict[str, Any]
+    sales_data: dict[str, Any]
 
 app = FastAPI(
     title="Walmart Sales API",
@@ -108,6 +139,58 @@ def sql_high_holiday_sales(
     return result
 
 
+@app.post("/sql/records")
+def sql_create(record: SalesRecordIn, db: Session = Depends(get_db)):
+
+    query = text("""
+        INSERT INTO department_sales
+            (store_id, dept_id, date_friday, weekly_sales, lag_1_sales, rolling_4wk_mean, predicted_sales)
+        VALUES
+            (:store_id, :dept_id, :date_friday, :weekly_sales, :lag_1_sales, :rolling_4wk_mean, :predicted_sales)
+    """)
+
+    db.execute(query, record.model_dump())
+    db.commit()
+
+    return {"message": "Record created", "store_id": record.store_id, "dept_id": record.dept_id, "date_friday": record.date_friday}
+
+
+@app.put("/sql/records/{sales_id}")
+def sql_update(sales_id: int, updates: SalesRecordUpdate, db: Session = Depends(get_db)):
+
+    data = {key: value for key, value in updates.model_dump().items() if value is not None}
+
+    if not data:
+        raise HTTPException(status_code=400, detail="No fields to update.")
+
+    set_clause = ", ".join(f"{key} = :{key}" for key in data)
+    data["sales_id"] = sales_id
+
+    query = text(f"UPDATE department_sales SET {set_clause} WHERE sales_id = :sales_id")
+
+    result = db.execute(query, data)
+    db.commit()
+
+    if result.rowcount == 0:
+        raise HTTPException(status_code=404, detail=f"Record {sales_id} not found.")
+
+    return {"message": "Record updated", "sales_id": sales_id}
+
+
+@app.delete("/sql/records/{sales_id}")
+def sql_delete(sales_id: int, db: Session = Depends(get_db)):
+
+    query = text("DELETE FROM department_sales WHERE sales_id = :sales_id")
+
+    result = db.execute(query, {"sales_id": sales_id})
+    db.commit()
+
+    if result.rowcount == 0:
+        raise HTTPException(status_code=404, detail=f"Record {sales_id} not found.")
+
+    return {"message": "Record deleted", "sales_id": sales_id}
+
+
 # =======================================================
 # MONGODB ENDPOINTS
 # =======================================================
@@ -170,6 +253,56 @@ def mongo_date_range(
         for doc in docs
 
     ]
+
+
+@app.post("/mongo/records")
+def mongo_create(record: MongoRecordIn):
+
+    coll = get_mongo()
+
+    doc = record.model_dump()
+    doc["store_dept_id"] = f"{record.store_id}_{record.dept_id}_{record.date_friday}"
+
+    result = coll.insert_one(doc)
+
+    return {"message": "Document created", "_id": str(result.inserted_id)}
+
+
+def parse_object_id(record_id: str) -> ObjectId:
+
+    try:
+        return ObjectId(record_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail=f"'{record_id}' is not a valid document id.")
+
+
+@app.put("/mongo/records/{record_id}")
+def mongo_update(record_id: str, updates: dict[str, Any]):
+
+    if not updates:
+        raise HTTPException(status_code=400, detail="No fields to update.")
+
+    coll = get_mongo()
+
+    result = coll.update_one({"_id": parse_object_id(record_id)}, {"$set": updates})
+
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail=f"Document {record_id} not found.")
+
+    return {"message": "Document updated", "_id": record_id}
+
+
+@app.delete("/mongo/records/{record_id}")
+def mongo_delete(record_id: str):
+
+    coll = get_mongo()
+
+    result = coll.delete_one({"_id": parse_object_id(record_id)})
+
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail=f"Document {record_id} not found.")
+
+    return {"message": "Document deleted", "_id": record_id}
 
 
 @app.get("/mongo/high-holiday-sales")
