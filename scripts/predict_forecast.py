@@ -139,10 +139,15 @@ def main() -> None:
     parser.add_argument("--store", type=int, default=1)
     parser.add_argument("--dept", type=int, default=1)
     parser.add_argument("--lookback-weeks", type=int, default=16)
+    parser.add_argument("--output", type=Path, default=None, help="also save the result as JSON to this path")
     args = parser.parse_args()
 
     result = predict(args.store, args.dept, args.lookback_weeks)
     print(json.dumps(result, indent=2))
+
+    if args.output:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(result, indent=2))
 
 
 if __name__ == "__main__":
