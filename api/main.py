@@ -142,6 +142,8 @@ def sql_high_holiday_sales(
 @app.post("/sql/records")
 def sql_create(record: SalesRecordIn, db: Session = Depends(get_db)):
 
+    # store_id + date_friday need to already exist in stores/weekly_features
+    # (foreign keys), this just adds the sales number on top of that
     query = text("""
         INSERT INTO department_sales
             (store_id, dept_id, date_friday, weekly_sales, lag_1_sales, rolling_4wk_mean, predicted_sales)
@@ -158,17 +160,21 @@ def sql_create(record: SalesRecordIn, db: Session = Depends(get_db)):
 @app.put("/sql/records/{sales_id}")
 def sql_update(sales_id: int, updates: SalesRecordUpdate, db: Session = Depends(get_db)):
 
-    data = {key: value for key, value in updates.model_dump().items() if value is not None}
+    # only update the fields that were actually sent, leave the rest alone
+    fields_to_update = {}
+    for key, value in updates.model_dump().items():
+        if value is not None:
+            fields_to_update[key] = value
 
-    if not data:
+    if not fields_to_update:
         raise HTTPException(status_code=400, detail="No fields to update.")
 
-    set_clause = ", ".join(f"{key} = :{key}" for key in data)
-    data["sales_id"] = sales_id
+    set_clause = ", ".join(f"{key} = :{key}" for key in fields_to_update)
+    fields_to_update["sales_id"] = sales_id
 
     query = text(f"UPDATE department_sales SET {set_clause} WHERE sales_id = :sales_id")
 
-    result = db.execute(query, data)
+    result = db.execute(query, fields_to_update)
     db.commit()
 
     if result.rowcount == 0:
@@ -261,7 +267,7 @@ def mongo_create(record: MongoRecordIn):
     coll = get_mongo()
 
     doc = record.model_dump()
-    doc["store_dept_id"] = f"{record.store_id}_{record.dept_id}_{record.date_friday}"
+    doc["store_dept_id"] = f"{record.store_id}_{record.dept_id}_{record.date_friday}"  # same id format as the rest of the collection
 
     result = coll.insert_one(doc)
 
@@ -269,7 +275,8 @@ def mongo_create(record: MongoRecordIn):
 
 
 def parse_object_id(record_id: str) -> ObjectId:
-
+    # mongo ids aren't plain strings, so this has to be converted before
+    # querying or update/delete would just silently match nothing
     try:
         return ObjectId(record_id)
     except InvalidId:
@@ -284,6 +291,7 @@ def mongo_update(record_id: str, updates: dict[str, Any]):
 
     coll = get_mongo()
 
+    # supports dot notation for nested fields, e.g. "sales_data.predicted_sales": 500
     result = coll.update_one({"_id": parse_object_id(record_id)}, {"$set": updates})
 
     if result.matched_count == 0:
